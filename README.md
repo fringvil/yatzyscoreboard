@@ -1,4 +1,4 @@
-# yatzyscoreboard
+# Yatzy with a twist
 
 # Architecture: 
 ## Flutter + Riverpod + Clean Architecture + Use Cases + Hive + UDF + Flutter localizations
