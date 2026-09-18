@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yatzy Scoreboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>Yatzy Scoreboard</h1>
+      <p>Track players and totals for a full Yatzy game.</p>
+    </header>
+
+    <section class="controls" aria-label="Game controls">
+      <div class="player-controls">
+        <label for="playerName">Player name</label>
+        <div class="player-add-row">
+          <input id="playerName" type="text" maxlength="30" aria-describedby="playerNameHelp" placeholder="Enter player name" />
+          <button id="addPlayerBtn" type="button">Add Player</button>
+        </div>
+        <p id="playerNameHelp" class="input-help">Up to 30 characters.</p>
+      </div>
+
+      <div class="game-controls">
+        <button id="resetScoresBtn" type="button" class="secondary">Reset Scores</button>
+        <button id="newGameBtn" type="button" class="danger">Start New Game (Clear All)</button>
+      </div>
+    </section>
+
+    <section class="table-wrapper" aria-label="Yatzy scorecard">
+      <table id="scoreTable">
+        <caption class="visually-hidden">Yatzy scorecard for all players</caption>
+        <thead>
+          <tr id="playerHeaderRow">
+            <th scope="col" class="category-col">Category</th>
+          </tr>
+        </thead>
+        <tbody id="scoreTableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
