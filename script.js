@@ -65,8 +65,6 @@ const scoreTableBody = document.getElementById("scoreTableBody");
 // ---------------------------------------------------------------------------
 const state = loadState();
 
-render();
-
 // ---------------------------------------------------------------------------
 // State helpers
 // ---------------------------------------------------------------------------
@@ -204,6 +202,12 @@ function advanceTurn() {
   const currentIndex = state.players.findIndex((player) => player.id === state.currentTurnPlayerId);
   const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % state.players.length;
   state.currentTurnPlayerId = state.players[nextIndex].id;
+
+  if (state.digitalDiceEnabled) {
+    state.dice.activePlayerId = state.currentTurnPlayerId;
+    state.dice.rollsUsed = 0;
+    state.dice.held = [false, false, false, false, false];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -933,3 +937,5 @@ function render() {
   renderHeader();
   renderBody();
 }
+
+render();
