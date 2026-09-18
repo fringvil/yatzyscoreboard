@@ -174,7 +174,8 @@ function createScoreInput(player, categoryKey) {
 
     if (rawValue === "") {
       delete player.scores[categoryKey];
-      saveAndRender();
+      saveState();
+      updateTotalsForPlayer(player.id);
       return;
     }
 
@@ -184,7 +185,9 @@ function createScoreInput(player, categoryKey) {
     }
 
     player.scores[categoryKey] = Math.max(0, Math.trunc(parsedValue));
-    saveAndRender();
+    event.target.value = String(player.scores[categoryKey]);
+    saveState();
+    updateTotalsForPlayer(player.id);
   });
 
   return input;
@@ -234,10 +237,31 @@ function createRow({ label, sectionClass = "", isTotal = false, isGrandTotal = f
     }
 
     const totals = calculateTotals(player);
-    row.appendChild(createCell(String(totals[totalKey]), "total-value"));
+    const totalCell = createCell(String(totals[totalKey]), "total-value");
+    totalCell.dataset.playerId = player.id;
+    totalCell.dataset.totalKey = totalKey;
+    row.appendChild(totalCell);
   }
 
   return row;
+}
+
+function updateTotalsForPlayer(playerId) {
+  const player = state.players.find((entry) => entry.id === playerId);
+  if (!player) {
+    return;
+  }
+
+  const totals = calculateTotals(player);
+  const totalCells = scoreTableBody.querySelectorAll("[data-player-id][data-total-key]");
+  for (const cell of totalCells) {
+    if (cell.dataset.playerId !== playerId) {
+      continue;
+    }
+
+    const key = cell.dataset.totalKey;
+    cell.textContent = key && key in totals ? String(totals[key]) : "";
+  }
 }
 
 function renderHeader() {

@@ -23,6 +23,6 @@ A simple, single-page Yatzy (Yahtzee) scoreboard built with plain HTML, CSS, and
 No build step is required.
 
 1. Clone or download this repository.
-2. Open `/home/runner/work/yatzyscoreboard/yatzyscoreboard/index.html` in a web browser.
+2. Open `index.html` in a web browser from the project root.
 
 You can also host the files with GitHub Pages.
