@@ -17,6 +17,17 @@ A simple, single-page Yatzy scoreboard built with plain HTML, CSS, and JavaScrip
 - Start a new game (clears players and scores)
 - Local storage persistence so refresh does not lose the current game
 - Responsive layout with sticky table header
+- **Optional pre-game betting**: tie a household task (or a custom task) to a Yatzy
+  category, with normal/double/triple stakes. Bets resolve automatically as scores
+  are entered — a successful score wins the bet, a zero score loses it and logs the
+  task in the Task Log.
+- **Task Log**: a persistent log of tasks owed from lost bets, with buttons to mark
+  them completed or forgiven. Hidden entirely when betting is off.
+- **Optional digital dice**: a 5-die roller with hold/release per die, a 3-roll-per-turn
+  counter, and a one-click button to apply the current roll's computed score directly
+  into the active player's scorecard cell for any category.
+- A pre-game setup lobby to add players and toggle betting/digital dice before
+  locking in and starting the game (settings can be reopened with "Edit Setup").
 
 ## Run locally
 
