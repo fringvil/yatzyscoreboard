@@ -225,6 +225,11 @@ function addPlayer(name) {
 }
 
 function removePlayer(playerId) {
+  const player = state.players.find((p) => p.id === playerId);
+  const playerName = player ? player.name : "this player";
+  if (!window.confirm(`Remove ${playerName}? This will delete their scores.`)) {
+    return;
+  }
   state.players = state.players.filter((player) => player.id !== playerId);
   state.bets = state.bets.filter((bet) => bet.playerId !== playerId);
   state.taskLog = state.taskLog.filter((entry) => entry.playerId !== playerId);
