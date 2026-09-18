@@ -21,7 +21,10 @@ body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
+  background-image: radial-gradient(circle at top, #eef2fc 0%, var(--bg) 55%);
+  background-attachment: fixed;
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 .app {
@@ -30,8 +33,14 @@ body {
   padding: 0.75rem;
 }
 
+.app-header {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
 .app-header h1 {
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .app-header p {
@@ -72,7 +81,13 @@ input[type="number"] {
   padding: 0.5rem 0.6rem;
   font-size: 0.95rem;
   background: #fff;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="text"]:focus-visible,
+input[type="number"]:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(47, 91, 234, 0.15);
 }
 
 input[type="text"] {
@@ -87,11 +102,18 @@ button {
   padding: 0.55rem 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(33, 38, 47, 0.08);
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 button:hover {
   background: var(--primary-hover);
+  box-shadow: 0 2px 6px rgba(33, 38, 47, 0.12);
+}
+
+button:active {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 input[type="text"]:focus-visible,
@@ -133,6 +155,7 @@ button.danger:hover,
   background: var(--surface);
   display: inline-block;
   max-width: 100%;
+  box-shadow: 0 1px 3px rgba(33, 38, 47, 0.06);
 }
 
 table {
@@ -175,8 +198,9 @@ tbody tr:nth-child(even) {
 
 .grand-total-row {
   background: #dde8ff !important;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 800;
+  box-shadow: inset 0 2px 0 var(--primary);
 }
 
 .score-input {
@@ -256,6 +280,7 @@ tbody tr:nth-child(even) {
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   padding: 1rem 1.25rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(33, 38, 47, 0.06);
 }
 
 .setup-lobby h2 {
@@ -371,6 +396,7 @@ input[type="text"] {
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(33, 38, 47, 0.06);
 }
 
 .bet-status-panel h2,
@@ -403,6 +429,7 @@ input[type="text"] {
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(33, 38, 47, 0.06);
 }
 
 .dice-roller h2 {
@@ -435,11 +462,13 @@ input[type="text"] {
   border-radius: 0.5rem;
   cursor: pointer;
   color: var(--text);
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(33, 38, 47, 0.06);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .die:hover {
   border-color: var(--primary);
+  box-shadow: 0 2px 5px rgba(33, 38, 47, 0.1);
 }
 
 .die-held {
