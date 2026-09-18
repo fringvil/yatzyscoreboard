@@ -26,3 +26,16 @@ No build step is required.
 2. Open `index.html` in a web browser from the project root.
 
 You can also host the files with GitHub Pages.
+
+## Deploy to GitHub Pages
+
+This repository includes a GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) that automatically publishes the site to GitHub Pages on every push to `main`.
+
+To enable it:
+
+1. In the GitHub repository, go to **Settings** > **Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push (or merge) a commit to the `main` branch, or manually trigger the workflow from the **Actions** tab (**Deploy to GitHub Pages** > **Run workflow**).
+4. Once the workflow completes, the site will be available at the URL shown on the **Settings** > **Pages** page (typically `https://<owner>.github.io/<repo>/`).
+
+No build step is required since this is a static site; the workflow simply uploads the repository root as the Pages artifact.
