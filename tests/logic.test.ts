@@ -5,7 +5,12 @@ import {
   sanitizeScores,
   calculateTotals,
   computeScoreForCategory,
-} from "../logic.js";
+  Player,
+} from "../src/logic.js";
+
+function makePlayer(scores: Player["scores"]): Player {
+  return { id: "test-player", name: "Test Player", scores };
+}
 
 test("sanitizeScores drops non-numeric and out-of-range values", () => {
   const result = sanitizeScores({
@@ -32,7 +37,7 @@ test("sanitizeScores returns an empty object for invalid input", () => {
 });
 
 test("calculateTotals sums upper/lower sections without bonus", () => {
-  const player = { scores: { ones: 3, twos: 4, onePair: 10 } };
+  const player = makePlayer({ ones: 3, twos: 4, onePair: 10 });
   const totals = calculateTotals(player);
 
   assert.equal(totals.upperSum, 7);
@@ -43,7 +48,7 @@ test("calculateTotals sums upper/lower sections without bonus", () => {
 });
 
 test("calculateTotals awards the 50 point bonus at 63+ upper sum", () => {
-  const player = { scores: { ones: 5, twos: 10, threes: 15, fours: 20, fives: 13 } };
+  const player = makePlayer({ ones: 5, twos: 10, threes: 15, fours: 20, fives: 13 });
   const totals = calculateTotals(player);
 
   assert.equal(totals.upperSum, 63);
@@ -52,7 +57,7 @@ test("calculateTotals awards the 50 point bonus at 63+ upper sum", () => {
 });
 
 test("calculateTotals treats missing scores as zero", () => {
-  const totals = calculateTotals({ scores: {} });
+  const totals = calculateTotals(makePlayer({}));
   assert.deepEqual(totals, { upperSum: 0, bonus: 0, upperTotal: 0, lowerTotal: 0, grandTotal: 0 });
 });
 
