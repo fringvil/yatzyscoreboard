@@ -12,6 +12,9 @@ import {
 
 const STORAGE_KEY = "yatzy-scoreboard-state-v2";
 
+const ALL_PLAYERS_OPTION = "__all__";
+const WIN_GAME_CATEGORY = "winGame";
+
 // ---------------------------------------------------------------------------
 // Element references
 // ---------------------------------------------------------------------------
@@ -275,19 +278,13 @@ betTaskSelect.addEventListener("change", () => {
 });
 
 addBetBtn.addEventListener("click", () => {
-  const playerId = betPlayerSelect.value;
-  if (!playerId) {
+  const playerSelection = betPlayerSelect.value;
+  if (!playerSelection) {
     return;
   }
 
   const category = betCategorySelect.value;
   if (!category) {
-    return;
-  }
-
-  const alreadyBetOnCategory = state.bets.some((bet) => bet.playerId === playerId && bet.category === category);
-  if (alreadyBetOnCategory) {
-    window.alert("This player already has a bet on that category. Only one bet per category is allowed.");
     return;
   }
 
@@ -300,15 +297,37 @@ addBetBtn.addEventListener("click", () => {
     }
   }
 
-  state.bets.push({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    playerId,
-    task,
-    category,
-    condition: "Score successfully in this category",
-    stakes: betStakesSelect.value,
-    status: "pending",
-  });
+  const targetPlayerIds =
+    playerSelection === ALL_PLAYERS_OPTION ? state.players.map((player) => player.id) : [playerSelection];
+
+  const condition = category === WIN_GAME_CATEGORY ? "Win the whole game" : "Score successfully in this category";
+
+  let skippedCount = 0;
+  for (const playerId of targetPlayerIds) {
+    const alreadyBetOnCategory = state.bets.some((bet) => bet.playerId === playerId && bet.category === category);
+    if (alreadyBetOnCategory) {
+      skippedCount += 1;
+      continue;
+    }
+
+    state.bets.push({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      playerId,
+      task,
+      category,
+      condition,
+      stakes: betStakesSelect.value,
+      status: "pending",
+    });
+  }
+
+  if (skippedCount > 0) {
+    window.alert(
+      skippedCount === targetPlayerIds.length
+        ? "Every selected player already has a bet on that category. Only one bet per category is allowed per player."
+        : `${skippedCount} player(s) already had a bet on that category and were skipped.`
+    );
+  }
 
   betCustomTaskInput.value = "";
   saveAndRender();
@@ -415,6 +434,49 @@ function setTaskLogStatus(taskId, status) {
   saveAndRender();
 }
 
+function allCategoriesFilled(player) {
+  return SCORE_CATEGORIES.every((category) => typeof player.scores[category.key] === "number");
+}
+
+function isGameComplete() {
+  return state.players.length > 0 && state.players.every(allCategoriesFilled);
+}
+
+function resolveWinGameBets() {
+  if (!isGameComplete()) {
+    return;
+  }
+
+  const winGameBets = state.bets.filter((bet) => bet.category === WIN_GAME_CATEGORY && bet.status === "pending");
+  if (!winGameBets.length) {
+    return;
+  }
+
+  const highestTotal = Math.max(...state.players.map((player) => calculateTotals(player).grandTotal));
+
+  for (const bet of winGameBets) {
+    const player = state.players.find((entry) => entry.id === bet.playerId);
+    if (!player) {
+      continue;
+    }
+
+    if (calculateTotals(player).grandTotal === highestTotal) {
+      bet.status = "won";
+      continue;
+    }
+
+    bet.status = "lost";
+    state.taskLog.push({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      playerId: player.id,
+      task: bet.task,
+      category: WIN_GAME_CATEGORY,
+      status: "pending",
+      timestamp: Date.now(),
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Digital dice logic
 // ---------------------------------------------------------------------------
@@ -460,6 +522,7 @@ function applyDiceScoreToActivePlayer(categoryKey) {
   const score = computeScoreForCategory(state.dice.values, categoryKey);
   player.scores[categoryKey] = score;
   resolveBetForScore(player, categoryKey, score);
+  resolveWinGameBets();
 
   if (!hadValue && player.id === state.currentTurnPlayerId) {
     advanceTurn();
@@ -507,6 +570,7 @@ function createScoreInput(player, categoryKey) {
     event.target.value = String(player.scores[categoryKey]);
     saveState();
     resolveBetForScore(player, categoryKey, player.scores[categoryKey]);
+    resolveWinGameBets();
     updateTotalsForPlayer(player.id);
     renderBetStatus();
     renderTaskLog();
@@ -739,16 +803,24 @@ function populateSelectOptions(selectEl, options, placeholder) {
   }
 }
 
+function getCategoryLabel(categoryKey) {
+  if (categoryKey === WIN_GAME_CATEGORY) {
+    return "Win the Whole Game";
+  }
+  const category = SCORE_CATEGORIES.find((entry) => entry.key === categoryKey);
+  return category ? category.label : categoryKey;
+}
+
 function renderBetForm() {
-  populateSelectOptions(
-    betPlayerSelect,
-    state.players.map((player) => ({ value: player.id, label: player.name })),
-    state.players.length ? null : "Add a player first"
-  );
-  populateSelectOptions(
-    betCategorySelect,
-    SCORE_CATEGORIES.map((category) => ({ value: category.key, label: category.label }))
-  );
+  const playerOptions = state.players.map((player) => ({ value: player.id, label: player.name }));
+  if (state.players.length > 1) {
+    playerOptions.push({ value: ALL_PLAYERS_OPTION, label: "All players" });
+  }
+  populateSelectOptions(betPlayerSelect, playerOptions, state.players.length ? null : "Add a player first");
+  populateSelectOptions(betCategorySelect, [
+    ...SCORE_CATEGORIES.map((category) => ({ value: category.key, label: category.label })),
+    { value: WIN_GAME_CATEGORY, label: getCategoryLabel(WIN_GAME_CATEGORY) },
+  ]);
 }
 
 function renderBetSummary() {
@@ -764,12 +836,11 @@ function renderBetSummary() {
 
   for (const bet of state.bets) {
     const player = state.players.find((entry) => entry.id === bet.playerId);
-    const category = SCORE_CATEGORIES.find((entry) => entry.key === bet.category);
     const li = document.createElement("li");
     li.className = "bet-summary-item";
 
     const text = document.createElement("span");
-    text.textContent = `${player ? player.name : "Unknown"} bets on ${category ? category.label : bet.category}: "${bet.task}" (${bet.stakes} stakes)`;
+    text.textContent = `${player ? player.name : "Unknown"} bets on ${getCategoryLabel(bet.category)}: "${bet.task}" (${bet.stakes} stakes)`;
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
@@ -870,10 +941,9 @@ function renderBetStatus() {
 
   for (const bet of state.bets) {
     const player = state.players.find((entry) => entry.id === bet.playerId);
-    const category = SCORE_CATEGORIES.find((entry) => entry.key === bet.category);
     const li = document.createElement("li");
     li.className = `bet-status-item bet-status-${bet.status}`;
-    li.textContent = `${player ? player.name : "Unknown"} — ${category ? category.label : bet.category}: "${bet.task}" — ${bet.status}`;
+    li.textContent = `${player ? player.name : "Unknown"} — ${getCategoryLabel(bet.category)}: "${bet.task}" — ${bet.status}`;
     betStatusList.appendChild(li);
   }
 }
@@ -897,13 +967,12 @@ function renderTaskLog() {
 
   for (const entry of state.taskLog) {
     const player = state.players.find((item) => item.id === entry.playerId);
-    const category = SCORE_CATEGORIES.find((item) => item.key === entry.category);
     const li = document.createElement("li");
     li.className = `task-log-item task-log-${entry.status}`;
 
     const text = document.createElement("span");
     const date = new Date(entry.timestamp);
-    text.textContent = `${player ? player.name : "Unknown"} owes: "${entry.task}" (from ${category ? category.label : entry.category}) — ${entry.status} — ${date.toLocaleString()}`;
+    text.textContent = `${player ? player.name : "Unknown"} owes: "${entry.task}" (from ${getCategoryLabel(entry.category)}) — ${entry.status} — ${date.toLocaleString()}`;
     li.appendChild(text);
 
     if (entry.status === "pending") {
