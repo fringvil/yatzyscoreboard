@@ -33,8 +33,9 @@ This repository includes a GitHub Actions workflow (`.github/workflows/deploy-pa
 
 To enable it:
 
-1. Push (or merge) a commit to the `main` branch, or manually trigger the workflow from the **Actions** tab (**Deploy to GitHub Pages** > **Run workflow**).
-2. The workflow will enable GitHub Pages for the repository automatically on its first run if needed.
-3. Once the workflow completes, the site will be available at the URL shown on the **Settings** > **Pages** page (typically `https://<owner>.github.io/<repo>/`).
+1. In the GitHub repository, go to **Settings** > **Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push (or merge) a commit to the `main` branch, or manually trigger the workflow from the **Actions** tab (**Deploy to GitHub Pages** > **Run workflow**).
+4. Once the workflow completes, the site will be available at the URL shown on the **Settings** > **Pages** page (typically `https://<owner>.github.io/<repo>/`).
 
 No build step is required since this is a static site; the workflow simply uploads the repository root as the Pages artifact.
