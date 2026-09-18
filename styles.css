@@ -72,6 +72,7 @@ input[type="number"] {
   padding: 0.5rem 0.6rem;
   font-size: 0.95rem;
   background: #fff;
+  transition: border-color 0.15s ease;
 }
 
 input[type="text"] {
@@ -86,10 +87,18 @@ button {
   padding: 0.55rem 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 button:hover {
   background: var(--primary-hover);
+}
+
+input[type="text"]:focus-visible,
+input[type="number"]:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 button.secondary {
