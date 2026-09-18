@@ -17,6 +17,8 @@ const SCORE_CATEGORIES = [
 ];
 
 const STORAGE_KEY = "yatzy-scoreboard-state-v1";
+const UPPER_CATEGORY_KEYS = SCORE_CATEGORIES.filter((category) => category.section === "upper").map((category) => category.key);
+const LOWER_CATEGORY_KEYS = SCORE_CATEGORIES.filter((category) => category.section === "lower").map((category) => category.key);
 const CATEGORY_MAX_SCORES = {
   ones: 5,
   twos: 10,
@@ -167,13 +169,10 @@ function getNumericScore(player, categoryKey) {
 }
 
 function calculateTotals(player) {
-  const upperKeys = SCORE_CATEGORIES.filter((category) => category.section === "upper").map((category) => category.key);
-  const lowerKeys = SCORE_CATEGORIES.filter((category) => category.section === "lower").map((category) => category.key);
-
-  const upperSum = upperKeys.reduce((sum, key) => sum + getNumericScore(player, key), 0);
+  const upperSum = UPPER_CATEGORY_KEYS.reduce((sum, key) => sum + getNumericScore(player, key), 0);
   const bonus = upperSum >= 63 ? 50 : 0;
   const upperTotal = upperSum + bonus;
-  const lowerTotal = lowerKeys.reduce((sum, key) => sum + getNumericScore(player, key), 0);
+  const lowerTotal = LOWER_CATEGORY_KEYS.reduce((sum, key) => sum + getNumericScore(player, key), 0);
   const grandTotal = upperTotal + lowerTotal;
 
   return { upperSum, bonus, upperTotal, lowerTotal, grandTotal };

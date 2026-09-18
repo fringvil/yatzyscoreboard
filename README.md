@@ -1,6 +1,6 @@
 # Yatzy Scoreboard
 
-A simple, single-page Yatzy (Yahtzee) scoreboard built with plain HTML, CSS, and JavaScript.
+A simple, single-page Yatzy scoreboard built with plain HTML, CSS, and JavaScript.
 
 ## Features
 
