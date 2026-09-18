@@ -1,43 +1,16 @@
-const SCORE_CATEGORIES = [
-  { key: "ones", label: "Ones", section: "upper" },
-  { key: "twos", label: "Twos", section: "upper" },
-  { key: "threes", label: "Threes", section: "upper" },
-  { key: "fours", label: "Fours", section: "upper" },
-  { key: "fives", label: "Fives", section: "upper" },
-  { key: "sixes", label: "Sixes", section: "upper" },
-  { key: "onePair", label: "One Pair", section: "lower" },
-  { key: "twoPairs", label: "Two Pairs", section: "lower" },
-  { key: "threeKind", label: "Three of a Kind", section: "lower" },
-  { key: "fourKind", label: "Four of a Kind", section: "lower" },
-  { key: "smallStraight", label: "Small Straight", section: "lower" },
-  { key: "largeStraight", label: "Large Straight", section: "lower" },
-  { key: "fullHouse", label: "Full House", section: "lower" },
-  { key: "chance", label: "Chance", section: "lower" },
-  { key: "yatzy", label: "Yatzy", section: "lower" },
-];
+import {
+  SCORE_CATEGORIES,
+  UPPER_CATEGORY_KEYS,
+  LOWER_CATEGORY_KEYS,
+  CATEGORY_MAX_SCORES,
+  STAKES_MULTIPLIERS,
+  sanitizeScores,
+  getNumericScore,
+  calculateTotals,
+  computeScoreForCategory,
+} from "./logic.js";
 
 const STORAGE_KEY = "yatzy-scoreboard-state-v2";
-const UPPER_CATEGORY_KEYS = SCORE_CATEGORIES.filter((category) => category.section === "upper").map((category) => category.key);
-const LOWER_CATEGORY_KEYS = SCORE_CATEGORIES.filter((category) => category.section === "lower").map((category) => category.key);
-const CATEGORY_MAX_SCORES = {
-  ones: 5,
-  twos: 10,
-  threes: 15,
-  fours: 20,
-  fives: 25,
-  sixes: 30,
-  onePair: 12,
-  twoPairs: 22,
-  threeKind: 18,
-  fourKind: 24,
-  smallStraight: 15,
-  largeStraight: 20,
-  fullHouse: 28,
-  chance: 30,
-  yatzy: 50,
-};
-
-const STAKES_MULTIPLIERS = { normal: 1, double: 2, triple: 3 };
 
 // ---------------------------------------------------------------------------
 // Element references
@@ -188,23 +161,6 @@ function loadState() {
   } catch {
     return createDefaultState();
   }
-}
-
-function sanitizeScores(scores) {
-  const safeScores = {};
-  if (!scores || typeof scores !== "object") {
-    return safeScores;
-  }
-
-  for (const category of SCORE_CATEGORIES) {
-    const value = scores[category.key];
-    if (typeof value === "number" && Number.isFinite(value)) {
-      const maxScore = CATEGORY_MAX_SCORES[category.key] ?? 0;
-      safeScores[category.key] = Math.max(0, Math.min(maxScore, Math.trunc(value)));
-    }
-  }
-
-  return safeScores;
 }
 
 function saveState() {
@@ -451,83 +407,6 @@ function startNewTurn() {
   saveAndRender();
 }
 
-function computeScoreForCategory(diceValues, categoryKey) {
-  const counts = [0, 0, 0, 0, 0, 0, 0];
-  for (const value of diceValues) {
-    counts[value] += 1;
-  }
-  const sumAll = diceValues.reduce((sum, value) => sum + value, 0);
-
-  const numberCategories = { ones: 1, twos: 2, threes: 3, fours: 4, fives: 5, sixes: 6 };
-  if (categoryKey in numberCategories) {
-    const face = numberCategories[categoryKey];
-    return counts[face] * face;
-  }
-
-  switch (categoryKey) {
-    case "onePair": {
-      let best = 0;
-      for (let face = 6; face >= 1; face -= 1) {
-        if (counts[face] >= 2) {
-          best = face * 2;
-          break;
-        }
-      }
-      return best;
-    }
-    case "twoPairs": {
-      const pairFaces = [];
-      for (let face = 6; face >= 1; face -= 1) {
-        if (counts[face] >= 2) {
-          pairFaces.push(face);
-        }
-      }
-      if (pairFaces.length >= 2) {
-        return pairFaces[0] * 2 + pairFaces[1] * 2;
-      }
-      return 0;
-    }
-    case "threeKind": {
-      for (let face = 6; face >= 1; face -= 1) {
-        if (counts[face] >= 3) {
-          return face * 3;
-        }
-      }
-      return 0;
-    }
-    case "fourKind": {
-      for (let face = 6; face >= 1; face -= 1) {
-        if (counts[face] >= 4) {
-          return face * 4;
-        }
-      }
-      return 0;
-    }
-    case "smallStraight": {
-      const isSmall = [1, 2, 3, 4, 5].every((face) => counts[face] >= 1) && diceValues.length === 5;
-      return isSmall ? 15 : 0;
-    }
-    case "largeStraight": {
-      const isLarge = [2, 3, 4, 5, 6].every((face) => counts[face] >= 1) && diceValues.length === 5;
-      return isLarge ? 20 : 0;
-    }
-    case "fullHouse": {
-      const hasThree = counts.some((count, face) => face > 0 && count === 3);
-      const hasTwo = counts.some((count, face) => face > 0 && count === 2);
-      return hasThree && hasTwo ? sumAll : 0;
-    }
-    case "chance": {
-      return sumAll;
-    }
-    case "yatzy": {
-      const hasFive = counts.some((count) => count === 5);
-      return hasFive ? 50 : 0;
-    }
-    default:
-      return 0;
-  }
-}
-
 function applyDiceScoreToActivePlayer(categoryKey) {
   const player = state.players.find((entry) => entry.id === state.dice.activePlayerId);
   if (!player) {
@@ -546,21 +425,6 @@ function applyDiceScoreToActivePlayer(categoryKey) {
 // ---------------------------------------------------------------------------
 // Scoring table rendering
 // ---------------------------------------------------------------------------
-function getNumericScore(player, categoryKey) {
-  const value = player.scores[categoryKey];
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function calculateTotals(player) {
-  const upperSum = UPPER_CATEGORY_KEYS.reduce((sum, key) => sum + getNumericScore(player, key), 0);
-  const bonus = upperSum >= 63 ? 50 : 0;
-  const upperTotal = upperSum + bonus;
-  const lowerTotal = LOWER_CATEGORY_KEYS.reduce((sum, key) => sum + getNumericScore(player, key), 0);
-  const grandTotal = upperTotal + lowerTotal;
-
-  return { upperSum, bonus, upperTotal, lowerTotal, grandTotal };
-}
-
 function createScoreInput(player, categoryKey) {
   const input = document.createElement("input");
   input.type = "number";

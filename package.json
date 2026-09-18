@@ -1,0 +1,10 @@
+{
+  "name": "yatzyscoreboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A simple, single-page Yatzy scoreboard built with plain HTML, CSS, and JavaScript.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

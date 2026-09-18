@@ -38,6 +38,15 @@ No build step is required.
 
 You can also host the files with GitHub Pages.
 
+## Tests
+
+Pure scoring logic (score calculations, totals, state sanitization) lives in `logic.js` and is
+covered by tests using Node's built-in test runner — no extra dependencies required.
+
+```
+npm test
+```
+
 ## Deploy to GitHub Pages
 
 This repository includes a GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) that automatically publishes the site to GitHub Pages on every push to `main`.
