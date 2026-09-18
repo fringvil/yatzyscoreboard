@@ -1,8 +1,17 @@
 // ---------------------------------------------------------------------------
-// Pure scoring/state logic, shared between script.js (browser) and tests.
+// Pure scoring/state logic, shared between script.ts (browser) and tests.
 // No DOM or localStorage access lives here so it can be tested in isolation.
 // ---------------------------------------------------------------------------
-export const SCORE_CATEGORIES = [
+
+export type Section = "upper" | "lower";
+
+export interface ScoreCategory {
+  key: string;
+  label: string;
+  section: Section;
+}
+
+export const SCORE_CATEGORIES: ScoreCategory[] = [
   { key: "ones", label: "Ones", section: "upper" },
   { key: "twos", label: "Twos", section: "upper" },
   { key: "threes", label: "Threes", section: "upper" },
@@ -20,10 +29,14 @@ export const SCORE_CATEGORIES = [
   { key: "yatzy", label: "Yatzy", section: "lower" },
 ];
 
-export const UPPER_CATEGORY_KEYS = SCORE_CATEGORIES.filter((category) => category.section === "upper").map((category) => category.key);
-export const LOWER_CATEGORY_KEYS = SCORE_CATEGORIES.filter((category) => category.section === "lower").map((category) => category.key);
+export const UPPER_CATEGORY_KEYS: string[] = SCORE_CATEGORIES.filter((category) => category.section === "upper").map(
+  (category) => category.key
+);
+export const LOWER_CATEGORY_KEYS: string[] = SCORE_CATEGORIES.filter((category) => category.section === "lower").map(
+  (category) => category.key
+);
 
-export const CATEGORY_MAX_SCORES = {
+export const CATEGORY_MAX_SCORES: Record<string, number> = {
   ones: 5,
   twos: 10,
   threes: 15,
@@ -41,16 +54,35 @@ export const CATEGORY_MAX_SCORES = {
   yatzy: 50,
 };
 
-export const STAKES_MULTIPLIERS = { normal: 1, double: 2, triple: 3 };
+export type Stakes = "normal" | "double" | "triple";
 
-export function sanitizeScores(scores) {
-  const safeScores = {};
+export const STAKES_MULTIPLIERS: Record<Stakes, number> = { normal: 1, double: 2, triple: 3 };
+
+export type Scores = Record<string, number>;
+
+export interface Player {
+  id: string;
+  name: string;
+  scores: Scores;
+}
+
+export interface Totals {
+  upperSum: number;
+  bonus: number;
+  upperTotal: number;
+  lowerTotal: number;
+  grandTotal: number;
+}
+
+export function sanitizeScores(scores: unknown): Scores {
+  const safeScores: Scores = {};
   if (!scores || typeof scores !== "object") {
     return safeScores;
   }
 
+  const source = scores as Record<string, unknown>;
   for (const category of SCORE_CATEGORIES) {
-    const value = scores[category.key];
+    const value = source[category.key];
     if (typeof value === "number" && Number.isFinite(value)) {
       const maxScore = CATEGORY_MAX_SCORES[category.key] ?? 0;
       safeScores[category.key] = Math.max(0, Math.min(maxScore, Math.trunc(value)));
@@ -60,12 +92,12 @@ export function sanitizeScores(scores) {
   return safeScores;
 }
 
-export function getNumericScore(player, categoryKey) {
+export function getNumericScore(player: Player, categoryKey: string): number {
   const value = player.scores[categoryKey];
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-export function calculateTotals(player) {
+export function calculateTotals(player: Player): Totals {
   const upperSum = UPPER_CATEGORY_KEYS.reduce((sum, key) => sum + getNumericScore(player, key), 0);
   const bonus = upperSum >= 63 ? 50 : 0;
   const upperTotal = upperSum + bonus;
@@ -75,14 +107,14 @@ export function calculateTotals(player) {
   return { upperSum, bonus, upperTotal, lowerTotal, grandTotal };
 }
 
-export function computeScoreForCategory(diceValues, categoryKey) {
+export function computeScoreForCategory(diceValues: number[], categoryKey: string): number {
   const counts = [0, 0, 0, 0, 0, 0, 0];
   for (const value of diceValues) {
     counts[value] += 1;
   }
   const sumAll = diceValues.reduce((sum, value) => sum + value, 0);
 
-  const numberCategories = { ones: 1, twos: 2, threes: 3, fours: 4, fives: 5, sixes: 6 };
+  const numberCategories: Record<string, number> = { ones: 1, twos: 2, threes: 3, fours: 4, fives: 5, sixes: 6 };
   if (categoryKey in numberCategories) {
     const face = numberCategories[categoryKey];
     return counts[face] * face;
@@ -100,7 +132,7 @@ export function computeScoreForCategory(diceValues, categoryKey) {
       return best;
     }
     case "twoPairs": {
-      const pairFaces = [];
+      const pairFaces: number[] = [];
       for (let face = 6; face >= 1; face -= 1) {
         if (counts[face] >= 2) {
           pairFaces.push(face);

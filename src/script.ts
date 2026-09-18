@@ -1,13 +1,13 @@
 import {
   SCORE_CATEGORIES,
-  UPPER_CATEGORY_KEYS,
-  LOWER_CATEGORY_KEYS,
   CATEGORY_MAX_SCORES,
   STAKES_MULTIPLIERS,
   sanitizeScores,
-  getNumericScore,
   calculateTotals,
   computeScoreForCategory,
+  Player,
+  Stakes,
+  Totals,
 } from "./logic.js";
 
 const STORAGE_KEY = "yatzy-scoreboard-state-v2";
@@ -15,63 +15,111 @@ const STORAGE_KEY = "yatzy-scoreboard-state-v2";
 const ALL_PLAYERS_OPTION = "__all__";
 const WIN_GAME_CATEGORY = "winGame";
 
+type BetStatus = "pending" | "won" | "lost";
+type TaskStatus = "pending" | "completed" | "forgiven";
+
+interface Bet {
+  id: string;
+  playerId: string;
+  task: string;
+  category: string;
+  condition: string;
+  stakes: Stakes;
+  status: BetStatus;
+}
+
+interface TaskLogEntry {
+  id: string;
+  playerId: string;
+  task: string;
+  category: string;
+  status: TaskStatus;
+  timestamp: number;
+}
+
+interface DiceState {
+  values: number[];
+  held: boolean[];
+  rollsUsed: number;
+  activePlayerId: string | null;
+}
+
+interface State {
+  setupComplete: boolean;
+  bettingEnabled: boolean;
+  digitalDiceEnabled: boolean;
+  players: Player[];
+  bets: Bet[];
+  taskLog: TaskLogEntry[];
+  currentTurnPlayerId: string | null;
+  dice: DiceState;
+}
+
+function byId<T extends HTMLElement>(id: string): T {
+  const element = document.getElementById(id);
+  if (!element) {
+    throw new Error(`Missing required element: #${id}`);
+  }
+  return element as T;
+}
+
 // ---------------------------------------------------------------------------
 // Element references
 // ---------------------------------------------------------------------------
-const setupLobby = document.getElementById("setupLobby");
-const gameArea = document.getElementById("gameArea");
+const setupLobby = byId<HTMLElement>("setupLobby");
+const gameArea = byId<HTMLElement>("gameArea");
 
-const playerNameInput = document.getElementById("playerName");
-const addPlayerBtn = document.getElementById("addPlayerBtn");
-const setupPlayerList = document.getElementById("setupPlayerList");
+const playerNameInput = byId<HTMLInputElement>("playerName");
+const addPlayerBtn = byId<HTMLButtonElement>("addPlayerBtn");
+const setupPlayerList = byId<HTMLUListElement>("setupPlayerList");
 
-const playerNameInGameInput = document.getElementById("playerNameInGame");
-const addPlayerInGameBtn = document.getElementById("addPlayerInGameBtn");
+const playerNameInGameInput = byId<HTMLInputElement>("playerNameInGame");
+const addPlayerInGameBtn = byId<HTMLButtonElement>("addPlayerInGameBtn");
 
-const resetScoresBtn = document.getElementById("resetScoresBtn");
-const newGameBtn = document.getElementById("newGameBtn");
-const editSetupBtn = document.getElementById("editSetupBtn");
+const resetScoresBtn = byId<HTMLButtonElement>("resetScoresBtn");
+const newGameBtn = byId<HTMLButtonElement>("newGameBtn");
+const editSetupBtn = byId<HTMLButtonElement>("editSetupBtn");
 
-const bettingToggle = document.getElementById("bettingToggle");
-const diceToggle = document.getElementById("diceToggle");
-const bettingSetup = document.getElementById("bettingSetup");
+const bettingToggle = byId<HTMLInputElement>("bettingToggle");
+const diceToggle = byId<HTMLInputElement>("diceToggle");
+const bettingSetup = byId<HTMLElement>("bettingSetup");
 
-const betPlayerSelect = document.getElementById("betPlayerSelect");
-const betTaskSelect = document.getElementById("betTaskSelect");
-const betCustomTaskField = document.getElementById("betCustomTaskField");
-const betCustomTaskInput = document.getElementById("betCustomTask");
-const betCategorySelect = document.getElementById("betCategorySelect");
-const betStakesSelect = document.getElementById("betStakesSelect");
-const addBetBtn = document.getElementById("addBetBtn");
-const betSummaryList = document.getElementById("betSummaryList");
+const betPlayerSelect = byId<HTMLSelectElement>("betPlayerSelect");
+const betTaskSelect = byId<HTMLSelectElement>("betTaskSelect");
+const betCustomTaskField = byId<HTMLElement>("betCustomTaskField");
+const betCustomTaskInput = byId<HTMLInputElement>("betCustomTask");
+const betCategorySelect = byId<HTMLSelectElement>("betCategorySelect");
+const betStakesSelect = byId<HTMLSelectElement>("betStakesSelect");
+const addBetBtn = byId<HTMLButtonElement>("addBetBtn");
+const betSummaryList = byId<HTMLUListElement>("betSummaryList");
 
-const startGameBtn = document.getElementById("startGameBtn");
+const startGameBtn = byId<HTMLButtonElement>("startGameBtn");
 
-const diceRoller = document.getElementById("diceRoller");
-const diceActivePlayerSelect = document.getElementById("diceActivePlayer");
-const diceRow = document.getElementById("diceRow");
-const rollDiceBtn = document.getElementById("rollDiceBtn");
-const resetTurnBtn = document.getElementById("resetTurnBtn");
-const rollCounter = document.getElementById("rollCounter");
+const diceRoller = byId<HTMLElement>("diceRoller");
+const diceActivePlayerSelect = byId<HTMLSelectElement>("diceActivePlayer");
+const diceRow = byId<HTMLElement>("diceRow");
+const rollDiceBtn = byId<HTMLButtonElement>("rollDiceBtn");
+const resetTurnBtn = byId<HTMLButtonElement>("resetTurnBtn");
+const rollCounter = byId<HTMLElement>("rollCounter");
 
-const betStatusPanel = document.getElementById("betStatusPanel");
-const betStatusList = document.getElementById("betStatusList");
+const betStatusPanel = byId<HTMLElement>("betStatusPanel");
+const betStatusList = byId<HTMLUListElement>("betStatusList");
 
-const taskLogPanel = document.getElementById("taskLogPanel");
-const taskLogList = document.getElementById("taskLogList");
+const taskLogPanel = byId<HTMLElement>("taskLogPanel");
+const taskLogList = byId<HTMLUListElement>("taskLogList");
 
-const playerHeaderRow = document.getElementById("playerHeaderRow");
-const scoreTableBody = document.getElementById("scoreTableBody");
+const playerHeaderRow = byId<HTMLTableRowElement>("playerHeaderRow");
+const scoreTableBody = byId<HTMLTableSectionElement>("scoreTableBody");
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-const state = loadState();
+const state: State = loadState();
 
 // ---------------------------------------------------------------------------
 // State helpers
 // ---------------------------------------------------------------------------
-function createDefaultPlayer(name) {
+function createDefaultPlayer(name: string): Player {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name,
@@ -79,7 +127,7 @@ function createDefaultPlayer(name) {
   };
 }
 
-function createDefaultState() {
+function createDefaultState(): State {
   return {
     setupComplete: false,
     bettingEnabled: false,
@@ -97,7 +145,7 @@ function createDefaultState() {
   };
 }
 
-function loadState() {
+function loadState(): State {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -109,37 +157,51 @@ function loadState() {
       return createDefaultState();
     }
 
-    const players = parsed.players
-      .filter((player) => player && typeof player.name === "string")
-      .map((player) => ({
+    const players: Player[] = parsed.players
+      .filter((player: unknown): player is { name: string } => {
+        return Boolean(player) && typeof (player as Record<string, unknown>).name === "string";
+      })
+      .map((player: Record<string, unknown>) => ({
         id: typeof player.id === "string" ? player.id : `${Date.now()}-${Math.random()}`,
-        name: player.name.trim().slice(0, 30) || "Player",
+        name: (player.name as string).trim().slice(0, 30) || "Player",
         scores: sanitizeScores(player.scores),
       }));
 
-    const bets = Array.isArray(parsed.bets)
+    const bets: Bet[] = Array.isArray(parsed.bets)
       ? parsed.bets
-          .filter((bet) => bet && typeof bet.playerId === "string" && typeof bet.category === "string")
-          .map((bet) => ({
+          .filter(
+            (bet: unknown): bet is Record<string, unknown> =>
+              Boolean(bet) &&
+              typeof (bet as Record<string, unknown>).playerId === "string" &&
+              typeof (bet as Record<string, unknown>).category === "string"
+          )
+          .map((bet: Record<string, unknown>) => ({
             id: typeof bet.id === "string" ? bet.id : `${Date.now()}-${Math.random()}`,
-            playerId: bet.playerId,
+            playerId: bet.playerId as string,
             task: typeof bet.task === "string" ? bet.task.slice(0, 60) : "Task",
-            category: bet.category,
+            category: bet.category as string,
             condition: typeof bet.condition === "string" ? bet.condition : "Score successfully in this category",
-            stakes: STAKES_MULTIPLIERS[bet.stakes] ? bet.stakes : "normal",
-            status: ["pending", "won", "lost"].includes(bet.status) ? bet.status : "pending",
+            stakes: (STAKES_MULTIPLIERS as Record<string, number>)[bet.stakes as string]
+              ? (bet.stakes as Stakes)
+              : "normal",
+            status: ["pending", "won", "lost"].includes(bet.status as string) ? (bet.status as BetStatus) : "pending",
           }))
       : [];
 
-    const taskLog = Array.isArray(parsed.taskLog)
+    const taskLog: TaskLogEntry[] = Array.isArray(parsed.taskLog)
       ? parsed.taskLog
-          .filter((entry) => entry && typeof entry.playerId === "string")
-          .map((entry) => ({
+          .filter(
+            (entry: unknown): entry is Record<string, unknown> =>
+              Boolean(entry) && typeof (entry as Record<string, unknown>).playerId === "string"
+          )
+          .map((entry: Record<string, unknown>) => ({
             id: typeof entry.id === "string" ? entry.id : `${Date.now()}-${Math.random()}`,
-            playerId: entry.playerId,
+            playerId: entry.playerId as string,
             task: typeof entry.task === "string" ? entry.task.slice(0, 60) : "Task",
             category: typeof entry.category === "string" ? entry.category : "",
-            status: ["pending", "completed", "forgiven"].includes(entry.status) ? entry.status : "pending",
+            status: ["pending", "completed", "forgiven"].includes(entry.status as string)
+              ? (entry.status as TaskStatus)
+              : "pending",
             timestamp: typeof entry.timestamp === "number" ? entry.timestamp : Date.now(),
           }))
       : [];
@@ -147,7 +209,8 @@ function loadState() {
     const dice = parsed.dice && typeof parsed.dice === "object" ? parsed.dice : {};
 
     const currentTurnPlayerId =
-      typeof parsed.currentTurnPlayerId === "string" && players.some((player) => player.id === parsed.currentTurnPlayerId)
+      typeof parsed.currentTurnPlayerId === "string" &&
+      players.some((player) => player.id === parsed.currentTurnPlayerId)
         ? parsed.currentTurnPlayerId
         : null;
 
@@ -171,13 +234,15 @@ function loadState() {
   }
 }
 
-function saveState() {
+function saveState(): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  } catch {
+    // Ignore storage failures (e.g. private browsing quota errors).
+  }
 }
 
-function saveAndRender() {
+function saveAndRender(): void {
   saveState();
   render();
 }
@@ -185,7 +250,7 @@ function saveAndRender() {
 // ---------------------------------------------------------------------------
 // Turn management
 // ---------------------------------------------------------------------------
-function ensureValidCurrentTurn() {
+function ensureValidCurrentTurn(): void {
   if (!state.players.length) {
     state.currentTurnPlayerId = null;
     return;
@@ -196,7 +261,7 @@ function ensureValidCurrentTurn() {
   }
 }
 
-function advanceTurn() {
+function advanceTurn(): void {
   if (!state.players.length) {
     state.currentTurnPlayerId = null;
     return;
@@ -216,7 +281,7 @@ function advanceTurn() {
 // ---------------------------------------------------------------------------
 // Player management
 // ---------------------------------------------------------------------------
-function addPlayer(name) {
+function addPlayer(name: string): void {
   const trimmed = name.trim().slice(0, 30);
   if (!trimmed) {
     return;
@@ -227,7 +292,7 @@ function addPlayer(name) {
   saveAndRender();
 }
 
-function removePlayer(playerId) {
+function removePlayer(playerId: string): void {
   const player = state.players.find((p) => p.id === playerId);
   const playerName = player ? player.name : "this player";
   if (!window.confirm(`Remove ${playerName}? This will delete their scores.`)) {
@@ -321,7 +386,7 @@ addBetBtn.addEventListener("click", () => {
       task,
       category,
       condition,
-      stakes: betStakesSelect.value,
+      stakes: betStakesSelect.value as Stakes,
       status: "pending",
     });
   }
@@ -338,7 +403,7 @@ addBetBtn.addEventListener("click", () => {
   saveAndRender();
 });
 
-function removeBet(betId) {
+function removeBet(betId: string): void {
   state.bets = state.bets.filter((bet) => bet.id !== betId);
   saveAndRender();
 }
@@ -404,11 +469,11 @@ newGameBtn.addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 // Betting logic
 // ---------------------------------------------------------------------------
-function getBetForPlayerCategory(playerId, categoryKey) {
+function getBetForPlayerCategory(playerId: string, categoryKey: string): Bet | undefined {
   return state.bets.find((bet) => bet.playerId === playerId && bet.category === categoryKey);
 }
 
-function resolveBetForScore(player, categoryKey, scoreValue) {
+function resolveBetForScore(player: Player, categoryKey: string, scoreValue: number): void {
   const bet = getBetForPlayerCategory(player.id, categoryKey);
   if (!bet || bet.status !== "pending") {
     return;
@@ -430,7 +495,7 @@ function resolveBetForScore(player, categoryKey, scoreValue) {
   });
 }
 
-function setTaskLogStatus(taskId, status) {
+function setTaskLogStatus(taskId: string, status: TaskStatus): void {
   const entry = state.taskLog.find((task) => task.id === taskId);
   if (!entry) {
     return;
@@ -439,15 +504,15 @@ function setTaskLogStatus(taskId, status) {
   saveAndRender();
 }
 
-function allCategoriesFilled(player) {
+function allCategoriesFilled(player: Player): boolean {
   return SCORE_CATEGORIES.every((category) => typeof player.scores[category.key] === "number");
 }
 
-function isGameComplete() {
+function isGameComplete(): boolean {
   return state.players.length > 0 && state.players.every(allCategoriesFilled);
 }
 
-function resolveWinGameBets() {
+function resolveWinGameBets(): void {
   if (!isGameComplete()) {
     return;
   }
@@ -485,7 +550,7 @@ function resolveWinGameBets() {
 // ---------------------------------------------------------------------------
 // Digital dice logic
 // ---------------------------------------------------------------------------
-function rollDice() {
+function rollDice(): void {
   if (state.dice.rollsUsed >= 3) {
     return;
   }
@@ -500,7 +565,7 @@ function rollDice() {
   saveAndRender();
 }
 
-function toggleHold(index) {
+function toggleHold(index: number): void {
   if (state.dice.rollsUsed === 0) {
     return;
   }
@@ -508,13 +573,13 @@ function toggleHold(index) {
   saveAndRender();
 }
 
-function startNewTurn() {
+function startNewTurn(): void {
   state.dice.rollsUsed = 0;
   state.dice.held = [false, false, false, false, false];
   saveAndRender();
 }
 
-function applyDiceScoreToActivePlayer(categoryKey) {
+function applyDiceScoreToActivePlayer(categoryKey: string): void {
   const player = state.players.find((entry) => entry.id === state.dice.activePlayerId);
   if (!player) {
     return;
@@ -539,7 +604,7 @@ function applyDiceScoreToActivePlayer(categoryKey) {
 // ---------------------------------------------------------------------------
 // Scoring table rendering
 // ---------------------------------------------------------------------------
-function createScoreInput(player, categoryKey) {
+function createScoreInput(player: Player, categoryKey: string): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "number";
   input.className = "score-input";
@@ -556,7 +621,7 @@ function createScoreInput(player, categoryKey) {
   });
 
   input.addEventListener("input", (event) => {
-    const rawValue = event.target.value;
+    const rawValue = (event.target as HTMLInputElement).value;
 
     if (rawValue === "") {
       delete player.scores[categoryKey];
@@ -572,7 +637,7 @@ function createScoreInput(player, categoryKey) {
 
     const maxScore = CATEGORY_MAX_SCORES[categoryKey] ?? 0;
     player.scores[categoryKey] = Math.max(0, Math.min(maxScore, Math.trunc(parsedValue)));
-    event.target.value = String(player.scores[categoryKey]);
+    (event.target as HTMLInputElement).value = String(player.scores[categoryKey]);
     saveState();
     resolveBetForScore(player, categoryKey, player.scores[categoryKey]);
     resolveWinGameBets();
@@ -594,7 +659,7 @@ function createScoreInput(player, categoryKey) {
   return input;
 }
 
-function createCell(content, className = "") {
+function createCell(content: string | HTMLElement, className = ""): HTMLTableCellElement {
   const td = document.createElement("td");
   if (className) {
     td.className = className;
@@ -609,7 +674,7 @@ function createCell(content, className = "") {
   return td;
 }
 
-function createScoreCellContent(player, categoryKey) {
+function createScoreCellContent(player: Player, categoryKey: string): HTMLDivElement {
   const wrapper = document.createElement("div");
   wrapper.className = "score-cell-content";
   wrapper.appendChild(createScoreInput(player, categoryKey));
@@ -633,7 +698,23 @@ function createScoreCellContent(player, categoryKey) {
   return wrapper;
 }
 
-function createRow({ label, sectionClass = "", isTotal = false, isGrandTotal = false, scoreKey = null, totalKey = null }) {
+interface CreateRowOptions {
+  label: string;
+  sectionClass?: string;
+  isTotal?: boolean;
+  isGrandTotal?: boolean;
+  scoreKey?: string | null;
+  totalKey?: keyof Totals | null;
+}
+
+function createRow({
+  label,
+  sectionClass = "",
+  isTotal = false,
+  isGrandTotal = false,
+  scoreKey = null,
+  totalKey = null,
+}: CreateRowOptions): HTMLTableRowElement {
   const row = document.createElement("tr");
   if (sectionClass) {
     row.classList.add(sectionClass);
@@ -671,25 +752,25 @@ function createRow({ label, sectionClass = "", isTotal = false, isGrandTotal = f
   return row;
 }
 
-function updateTotalsForPlayer(playerId) {
+function updateTotalsForPlayer(playerId: string): void {
   const player = state.players.find((entry) => entry.id === playerId);
   if (!player) {
     return;
   }
 
   const totals = calculateTotals(player);
-  const totalCells = scoreTableBody.querySelectorAll("[data-player-id][data-total-key]");
+  const totalCells = scoreTableBody.querySelectorAll<HTMLElement>("[data-player-id][data-total-key]");
   for (const cell of totalCells) {
     if (cell.dataset.playerId !== playerId) {
       continue;
     }
 
-    const key = cell.dataset.totalKey;
+    const key = cell.dataset.totalKey as keyof Totals | undefined;
     cell.textContent = key && key in totals ? String(totals[key]) : "";
   }
 }
 
-function renderHeader() {
+function renderHeader(): void {
   playerHeaderRow.innerHTML = "";
   const categoryHeader = document.createElement("th");
   categoryHeader.scope = "col";
@@ -735,7 +816,7 @@ function renderHeader() {
   }
 }
 
-function renderBody() {
+function renderBody(): void {
   scoreTableBody.innerHTML = "";
 
   if (!state.players.length) {
@@ -772,7 +853,7 @@ function renderBody() {
 // ---------------------------------------------------------------------------
 // Setup lobby rendering
 // ---------------------------------------------------------------------------
-function renderSetupPlayerList() {
+function renderSetupPlayerList(): void {
   setupPlayerList.innerHTML = "";
   for (const player of state.players) {
     const li = document.createElement("li");
@@ -792,7 +873,12 @@ function renderSetupPlayerList() {
   }
 }
 
-function populateSelectOptions(selectEl, options, placeholder) {
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+function populateSelectOptions(selectEl: HTMLSelectElement, options: SelectOption[], placeholder?: string | null): void {
   selectEl.innerHTML = "";
   if (placeholder) {
     const opt = document.createElement("option");
@@ -808,7 +894,7 @@ function populateSelectOptions(selectEl, options, placeholder) {
   }
 }
 
-function getCategoryLabel(categoryKey) {
+function getCategoryLabel(categoryKey: string): string {
   if (categoryKey === WIN_GAME_CATEGORY) {
     return "Win the Whole Game";
   }
@@ -816,8 +902,8 @@ function getCategoryLabel(categoryKey) {
   return category ? category.label : categoryKey;
 }
 
-function renderBetForm() {
-  const playerOptions = state.players.map((player) => ({ value: player.id, label: player.name }));
+function renderBetForm(): void {
+  const playerOptions: SelectOption[] = state.players.map((player) => ({ value: player.id, label: player.name }));
   if (state.players.length > 1) {
     playerOptions.push({ value: ALL_PLAYERS_OPTION, label: "All players" });
   }
@@ -828,7 +914,7 @@ function renderBetForm() {
   ]);
 }
 
-function renderBetSummary() {
+function renderBetSummary(): void {
   betSummaryList.innerHTML = "";
 
   if (!state.bets.length) {
@@ -858,7 +944,7 @@ function renderBetSummary() {
   }
 }
 
-function renderSetupLobby() {
+function renderSetupLobby(): void {
   setupLobby.hidden = state.setupComplete;
   gameArea.hidden = !state.setupComplete;
 
@@ -874,7 +960,7 @@ function renderSetupLobby() {
 // ---------------------------------------------------------------------------
 // Dice roller rendering
 // ---------------------------------------------------------------------------
-const DIE_FACES = {
+const DIE_FACES: Record<number, string> = {
   1: "⚀",
   2: "⚁",
   3: "⚂",
@@ -883,7 +969,7 @@ const DIE_FACES = {
   6: "⚅",
 };
 
-function renderDiceRoller() {
+function renderDiceRoller(): void {
   const show = state.setupComplete && state.digitalDiceEnabled;
   diceRoller.hidden = !show;
   if (!show) {
@@ -927,7 +1013,7 @@ resetTurnBtn.addEventListener("click", startNewTurn);
 // ---------------------------------------------------------------------------
 // Bet status panel & task log rendering
 // ---------------------------------------------------------------------------
-function renderBetStatus() {
+function renderBetStatus(): void {
   const show = state.setupComplete && state.bettingEnabled;
   betStatusPanel.hidden = !show;
   if (!show) {
@@ -953,7 +1039,7 @@ function renderBetStatus() {
   }
 }
 
-function renderTaskLog() {
+function renderTaskLog(): void {
   const show = state.setupComplete && state.bettingEnabled;
   taskLogPanel.hidden = !show;
   if (!show) {
@@ -1003,7 +1089,7 @@ function renderTaskLog() {
 // ---------------------------------------------------------------------------
 // Master render
 // ---------------------------------------------------------------------------
-function render() {
+function render(): void {
   renderSetupLobby();
   renderDiceRoller();
   renderBetStatus();

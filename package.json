@@ -3,8 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "A simple, single-page Yatzy scoreboard built with plain HTML, CSS, and JavaScript.",
+  "description": "A simple, single-page Yatzy scoreboard built with TypeScript, compiled to plain HTML/CSS/JS.",
   "scripts": {
-    "test": "node --test"
+    "build": "tsc",
+    "pretest": "npm run build",
+    "test": "node --test dist/tests/*.test.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^26.6.1",
+    "typescript": "^5.6.0"
   }
 }
