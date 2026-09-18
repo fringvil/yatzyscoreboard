@@ -10,10 +10,13 @@
   <main class="app">
     <header class="app-header">
       <h1>Yatzy Scoreboard</h1>
-      <p>Track players and totals for a full Yatzy game.</p>
+      <p>Track players and totals for a full Yatzy game, with optional betting and digital dice.</p>
     </header>
 
-    <section class="controls" aria-label="Game controls">
+    <!-- Pre-game setup lobby -->
+    <section id="setupLobby" class="setup-lobby" aria-label="Game setup">
+      <h2>Game Setup</h2>
+
       <div class="player-controls">
         <label for="playerName">Player name</label>
         <div class="player-add-row">
@@ -21,24 +24,122 @@
           <button id="addPlayerBtn" type="button">Add Player</button>
         </div>
         <p id="playerNameHelp" class="input-help">Up to 30 characters.</p>
+        <ul id="setupPlayerList" class="setup-player-list"></ul>
       </div>
 
-      <div class="game-controls">
-        <button id="resetScoresBtn" type="button" class="secondary">Reset Scores</button>
-        <button id="newGameBtn" type="button" class="danger">Start New Game (Clear All)</button>
+      <div class="setup-toggle-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="bettingToggle" />
+          Enable Betting
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="diceToggle" />
+          Use Digital Dice
+        </label>
+      </div>
+
+      <div id="bettingSetup" class="betting-setup" hidden>
+        <h3>Pre-Game Bets</h3>
+        <p class="input-help">Each player may place multiple bets, but only one bet per category. A bet is tied to a Yatzy category and a task the loser must complete.</p>
+        <div class="bet-form">
+          <div class="bet-field">
+            <label for="betPlayerSelect">Player</label>
+            <select id="betPlayerSelect"></select>
+          </div>
+          <div class="bet-field">
+            <label for="betTaskSelect">Task</label>
+            <select id="betTaskSelect">
+              <option value="Do the dishes">Do the dishes</option>
+              <option value="Do the laundry">Do the laundry</option>
+              <option value="Vacuum the house">Vacuum the house</option>
+              <option value="Take out the trash">Take out the trash</option>
+              <option value="Cook dinner">Cook dinner</option>
+              <option value="custom">Custom task&hellip;</option>
+            </select>
+          </div>
+          <div class="bet-field" id="betCustomTaskField" hidden>
+            <label for="betCustomTask">Custom task</label>
+            <input id="betCustomTask" type="text" maxlength="60" placeholder="Describe the task" />
+          </div>
+          <div class="bet-field">
+            <label for="betCategorySelect">Category</label>
+            <select id="betCategorySelect"></select>
+          </div>
+          <div class="bet-field">
+            <label for="betStakesSelect">Stakes</label>
+            <select id="betStakesSelect">
+              <option value="normal">Normal</option>
+              <option value="double">Double</option>
+              <option value="triple">Triple</option>
+            </select>
+          </div>
+          <button id="addBetBtn" type="button">Add Bet</button>
+        </div>
+        <ul id="betSummaryList" class="bet-summary-list" aria-label="Bet summary"></ul>
+      </div>
+
+      <div class="setup-actions">
+        <button id="startGameBtn" type="button">Start Game</button>
       </div>
     </section>
 
-    <section class="table-wrapper" aria-label="Yatzy scorecard">
-      <table id="scoreTable">
-        <caption class="visually-hidden">Yatzy scorecard for all players</caption>
-        <thead>
-          <tr id="playerHeaderRow">
-            <th scope="col" class="category-col">Category</th>
-          </tr>
-        </thead>
-        <tbody id="scoreTableBody"></tbody>
-      </table>
+    <!-- Active game area -->
+    <section id="gameArea" hidden>
+      <section class="controls" aria-label="Game controls">
+        <div class="player-controls">
+          <label for="playerNameInGame">Add player</label>
+          <div class="player-add-row">
+            <input id="playerNameInGame" type="text" maxlength="30" placeholder="Enter player name" />
+            <button id="addPlayerInGameBtn" type="button">Add Player</button>
+          </div>
+        </div>
+
+        <div class="game-controls">
+          <button id="resetScoresBtn" type="button" class="secondary">Reset Scores</button>
+          <button id="editSetupBtn" type="button" class="secondary">Edit Setup</button>
+          <button id="newGameBtn" type="button" class="danger">Start New Game (Clear All)</button>
+        </div>
+      </section>
+
+      <!-- Digital dice roller -->
+      <section id="diceRoller" class="dice-roller" aria-label="Digital dice roller" hidden>
+        <h2>Digital Dice</h2>
+        <div class="dice-active-player-row">
+          <label for="diceActivePlayer">Active player</label>
+          <select id="diceActivePlayer"></select>
+        </div>
+        <div id="diceRow" class="dice-row" role="group" aria-label="Dice"></div>
+        <div class="dice-controls">
+          <button id="rollDiceBtn" type="button">Roll</button>
+          <button id="resetTurnBtn" type="button" class="secondary">New Turn</button>
+          <span id="rollCounter" class="roll-counter">Rolls: 0 / 3</span>
+        </div>
+        <p class="input-help">Click a die to hold/release it between rolls. After rolling, click a category's dice icon in the scorecard to apply the current dice score for the active player.</p>
+      </section>
+
+      <!-- Bet status panel -->
+      <section id="betStatusPanel" class="bet-status-panel" aria-label="Bet status" hidden>
+        <h2>Bet Status</h2>
+        <ul id="betStatusList" class="bet-status-list"></ul>
+      </section>
+
+      <!-- Task log -->
+      <section id="taskLogPanel" class="task-log-panel" aria-label="Task log" hidden>
+        <h2>Task Log</h2>
+        <ul id="taskLogList" class="task-log-list"></ul>
+      </section>
+
+      <section class="table-wrapper" aria-label="Yatzy scorecard">
+        <table id="scoreTable">
+          <caption class="visually-hidden">Yatzy scorecard for all players</caption>
+          <thead>
+            <tr id="playerHeaderRow">
+              <th scope="col" class="category-col">Category</th>
+            </tr>
+          </thead>
+          <tbody id="scoreTableBody"></tbody>
+        </table>
+      </section>
     </section>
   </main>
 

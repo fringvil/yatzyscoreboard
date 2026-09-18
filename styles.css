@@ -215,6 +215,237 @@ tbody tr:nth-child(even) {
   border: 0;
 }
 
+/* Setup lobby */
+.setup-lobby {
+  margin-top: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.setup-lobby h2 {
+  margin-top: 0;
+}
+
+.setup-lobby h3 {
+  margin-bottom: 0.4rem;
+}
+
+.setup-player-list {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.setup-player-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: var(--row-alt);
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.setup-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.betting-setup {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+
+.bet-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.bet-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.bet-field label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+select,
+input[type="text"] {
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+  background: #fff;
+  color: var(--text);
+}
+
+.bet-summary-list,
+.bet-status-list,
+.task-log-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.bet-summary-item,
+.bet-status-item,
+.task-log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: var(--row-alt);
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.setup-actions {
+  margin-top: 1rem;
+}
+
+/* Bet status panel */
+.bet-status-panel,
+.task-log-panel {
+  margin-top: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.bet-status-panel h2,
+.task-log-panel h2 {
+  margin-top: 0;
+}
+
+.bet-status-won {
+  border-left: 4px solid var(--primary);
+}
+
+.bet-status-lost,
+.task-log-pending {
+  border-left: 4px solid var(--danger);
+}
+
+.task-log-completed {
+  border-left: 4px solid var(--primary);
+}
+
+.task-log-forgiven {
+  border-left: 4px solid var(--secondary);
+  opacity: 0.75;
+}
+
+/* Digital dice roller */
+.dice-roller {
+  margin-top: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.dice-roller h2 {
+  margin-top: 0;
+}
+
+.dice-active-player-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.dice-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.die {
+  font-size: 2.2rem;
+  line-height: 1;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2px solid var(--line);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.die:hover {
+  border-color: var(--primary);
+}
+
+.die-held {
+  border-color: var(--primary);
+  background: #edf2ff;
+  transform: translateY(-3px);
+}
+
+.dice-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.roll-counter {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.score-cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.apply-dice-btn {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  background: transparent;
+  color: inherit;
+}
+
+.apply-dice-btn:hover {
+  background: var(--row-alt);
+}
+
 @media (max-width: 700px) {
   .controls {
     align-items: stretch;
@@ -233,5 +464,14 @@ tbody tr:nth-child(even) {
   .player-add-row button,
   .game-controls button {
     flex: 1;
+  }
+
+  .bet-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .setup-toggle-row {
+    flex-direction: column;
   }
 }
