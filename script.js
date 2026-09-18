@@ -165,6 +165,7 @@ function createScoreInput(player, categoryKey) {
   input.className = "score-input";
   input.inputMode = "numeric";
   input.min = "0";
+  input.step = "1";
 
   const value = player.scores[categoryKey];
   input.value = typeof value === "number" ? String(value) : "";
