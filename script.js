@@ -17,6 +17,23 @@ const SCORE_CATEGORIES = [
 ];
 
 const STORAGE_KEY = "yatzy-scoreboard-state-v1";
+const CATEGORY_MAX_SCORES = {
+  ones: 5,
+  twos: 10,
+  threes: 15,
+  fours: 20,
+  fives: 25,
+  sixes: 30,
+  onePair: 12,
+  twoPairs: 22,
+  threeKind: 18,
+  fourKind: 24,
+  smallStraight: 15,
+  largeStraight: 20,
+  fullHouse: 28,
+  chance: 30,
+  yatzy: 50,
+};
 
 const playerNameInput = document.getElementById("playerName");
 const addPlayerBtn = document.getElementById("addPlayerBtn");
@@ -108,7 +125,8 @@ function sanitizeScores(scores) {
   for (const category of SCORE_CATEGORIES) {
     const value = scores[category.key];
     if (typeof value === "number" && Number.isFinite(value)) {
-      safeScores[category.key] = value;
+      const maxScore = CATEGORY_MAX_SCORES[category.key] ?? 0;
+      safeScores[category.key] = Math.max(0, Math.min(maxScore, Math.trunc(value)));
     }
   }
 
@@ -116,7 +134,9 @@ function sanitizeScores(scores) {
 }
 
 function saveState() {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {}
 }
 
 function saveAndRender() {
@@ -166,6 +186,7 @@ function createScoreInput(player, categoryKey) {
   input.inputMode = "numeric";
   input.min = "0";
   input.step = "1";
+  input.max = String(CATEGORY_MAX_SCORES[categoryKey] ?? 0);
 
   const value = player.scores[categoryKey];
   input.value = typeof value === "number" ? String(value) : "";
@@ -185,7 +206,8 @@ function createScoreInput(player, categoryKey) {
       return;
     }
 
-    player.scores[categoryKey] = Math.max(0, Math.trunc(parsedValue));
+    const maxScore = CATEGORY_MAX_SCORES[categoryKey] ?? 0;
+    player.scores[categoryKey] = Math.max(0, Math.min(maxScore, Math.trunc(parsedValue)));
     event.target.value = String(player.scores[categoryKey]);
     saveState();
     updateTotalsForPlayer(player.id);

@@ -17,9 +17,10 @@
       <div class="player-controls">
         <label for="playerName">Player name</label>
         <div class="player-add-row">
-          <input id="playerName" type="text" maxlength="30" placeholder="Enter player name" />
+          <input id="playerName" type="text" maxlength="30" aria-describedby="playerNameHelp" placeholder="Enter player name" />
           <button id="addPlayerBtn" type="button">Add Player</button>
         </div>
+        <p id="playerNameHelp" class="input-help">Up to 30 characters.</p>
       </div>
 
       <div class="game-controls">
