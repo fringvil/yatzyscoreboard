@@ -86,6 +86,7 @@ function createDefaultState() {
     players: [],
     bets: [],
     taskLog: [],
+    currentTurnPlayerId: null,
     dice: {
       values: [1, 1, 1, 1, 1],
       held: [false, false, false, false, false],
@@ -144,6 +145,11 @@ function loadState() {
 
     const dice = parsed.dice && typeof parsed.dice === "object" ? parsed.dice : {};
 
+    const currentTurnPlayerId =
+      typeof parsed.currentTurnPlayerId === "string" && players.some((player) => player.id === parsed.currentTurnPlayerId)
+        ? parsed.currentTurnPlayerId
+        : null;
+
     return {
       setupComplete: Boolean(parsed.setupComplete),
       bettingEnabled: Boolean(parsed.bettingEnabled),
@@ -151,6 +157,7 @@ function loadState() {
       players,
       bets,
       taskLog,
+      currentTurnPlayerId,
       dice: {
         values: Array.isArray(dice.values) && dice.values.length === 5 ? dice.values : [1, 1, 1, 1, 1],
         held: Array.isArray(dice.held) && dice.held.length === 5 ? dice.held : [false, false, false, false, false],
@@ -175,6 +182,31 @@ function saveAndRender() {
 }
 
 // ---------------------------------------------------------------------------
+// Turn management
+// ---------------------------------------------------------------------------
+function ensureValidCurrentTurn() {
+  if (!state.players.length) {
+    state.currentTurnPlayerId = null;
+    return;
+  }
+
+  if (!state.players.some((player) => player.id === state.currentTurnPlayerId)) {
+    state.currentTurnPlayerId = state.players[0].id;
+  }
+}
+
+function advanceTurn() {
+  if (!state.players.length) {
+    state.currentTurnPlayerId = null;
+    return;
+  }
+
+  const currentIndex = state.players.findIndex((player) => player.id === state.currentTurnPlayerId);
+  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % state.players.length;
+  state.currentTurnPlayerId = state.players[nextIndex].id;
+}
+
+// ---------------------------------------------------------------------------
 // Player management
 // ---------------------------------------------------------------------------
 function addPlayer(name) {
@@ -184,6 +216,7 @@ function addPlayer(name) {
   }
 
   state.players.push(createDefaultPlayer(trimmed));
+  ensureValidCurrentTurn();
   saveAndRender();
 }
 
@@ -194,6 +227,7 @@ function removePlayer(playerId) {
   if (state.dice.activePlayerId === playerId) {
     state.dice.activePlayerId = state.players.length ? state.players[0].id : null;
   }
+  ensureValidCurrentTurn();
   saveAndRender();
 }
 
@@ -291,6 +325,7 @@ startGameBtn.addEventListener("click", () => {
   if (state.digitalDiceEnabled && !state.dice.activePlayerId) {
     state.dice.activePlayerId = state.players[0].id;
   }
+  ensureValidCurrentTurn();
   saveAndRender();
 });
 
@@ -319,6 +354,7 @@ resetScoresBtn.addEventListener("click", () => {
     bet.status = "pending";
   }
   state.taskLog = [];
+  state.currentTurnPlayerId = state.players.length ? state.players[0].id : null;
 
   saveAndRender();
 });
@@ -416,9 +452,15 @@ function applyDiceScoreToActivePlayer(categoryKey) {
     return;
   }
 
+  const hadValue = typeof player.scores[categoryKey] === "number";
   const score = computeScoreForCategory(state.dice.values, categoryKey);
   player.scores[categoryKey] = score;
   resolveBetForScore(player, categoryKey, score);
+
+  if (!hadValue && player.id === state.currentTurnPlayerId) {
+    advanceTurn();
+  }
+
   saveAndRender();
 }
 
@@ -436,6 +478,10 @@ function createScoreInput(player, categoryKey) {
 
   const value = player.scores[categoryKey];
   input.value = typeof value === "number" ? String(value) : "";
+
+  input.addEventListener("focus", () => {
+    input.dataset.hadValueBeforeEdit = typeof player.scores[categoryKey] === "number" ? "1" : "0";
+  });
 
   input.addEventListener("input", (event) => {
     const rawValue = event.target.value;
@@ -460,6 +506,16 @@ function createScoreInput(player, categoryKey) {
     updateTotalsForPlayer(player.id);
     renderBetStatus();
     renderTaskLog();
+  });
+
+  input.addEventListener("change", () => {
+    const hasValue = typeof player.scores[categoryKey] === "number";
+    const hadValueBeforeEdit = input.dataset.hadValueBeforeEdit === "1";
+
+    if (hasValue && !hadValueBeforeEdit && player.id === state.currentTurnPlayerId) {
+      advanceTurn();
+      saveAndRender();
+    }
   });
 
   return input;
@@ -572,13 +628,27 @@ function renderHeader() {
     const th = document.createElement("th");
     th.scope = "col";
     th.className = "player-header";
+    if (state.setupComplete && player.id === state.currentTurnPlayerId) {
+      th.classList.add("current-turn");
+    }
 
     const content = document.createElement("div");
     content.className = "player-header-content";
 
+    const nameWrap = document.createElement("div");
+    nameWrap.className = "player-name-wrap";
+
     const name = document.createElement("span");
     name.className = "player-name";
     name.textContent = player.name;
+    nameWrap.appendChild(name);
+
+    if (state.setupComplete && player.id === state.currentTurnPlayerId) {
+      const badge = document.createElement("span");
+      badge.className = "turn-badge";
+      badge.textContent = "Current turn";
+      nameWrap.appendChild(badge);
+    }
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
@@ -586,7 +656,7 @@ function renderHeader() {
     removeBtn.textContent = "Remove";
     removeBtn.addEventListener("click", () => removePlayer(player.id));
 
-    content.append(name, removeBtn);
+    content.append(nameWrap, removeBtn);
     th.appendChild(content);
     playerHeaderRow.appendChild(th);
   }
